@@ -122,7 +122,8 @@ body {
   background: var(--accent-glow);
 }
 
-.drop-zone.drag-over {
+.drop-zone.drag-over,
+.drop-zone.dz-drag-hover {
   border-color: var(--accent);
   background: var(--accent-glow);
   box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
@@ -143,7 +144,8 @@ body {
 }
 
 .drop-zone:hover .drop-icon,
-.drop-zone.drag-over .drop-icon {
+.drop-zone.drag-over .drop-icon,
+.drop-zone.dz-drag-hover .drop-icon {
   color: var(--accent);
 }
 

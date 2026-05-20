@@ -1,12 +1,12 @@
 import type { LogFn } from './types';
 import { Archive } from 'libarchive.js';
 import { zip as zipAsync } from 'fflate';
+import Dropzone from 'dropzone';
 import { collectedFiles, extractRecursive, setProgress, showToast } from '@/features';
 import {
   isArchive,
   formatSize,
   dropZone,
-  fileInput,
   fileBtn,
   fileList,
   fileCount,
@@ -26,99 +26,100 @@ import {
   FILE_ICON_DEFAULT,
 } from '@/utils';
 
-// 초기화
 Archive.init({ workerUrl: '/worker-bundle.js' });
 
-// 업로드된 파일 상태 배열
-let uploadedFiles: File[] = [];
+const previewTemplate = `
+  <div class="file-item">
+    <span class="file-icon">${ARCHIVE_ICON}</span>
+    <span class="file-name"></span>
+    <span class="file-size"></span>
+    <button class="remove-btn" data-dz-remove aria-label="제거">✕</button>
+  </div>`;
 
-// 드래그 앤 드롭
-dropZone.addEventListener('dragover', e => {
-  e.preventDefault();
-  dropZone.classList.add('drag-over');
+let batchProcessing = false;
+
+const dropzone = new Dropzone(dropZone, {
+  autoProcessQueue: false,
+  previewsContainer: fileList,
+  previewTemplate,
+  clickable: [dropZone, fileBtn],
 });
 
-['dragleave', 'dragend'].forEach(evt => {
-  dropZone.addEventListener(evt, () => dropZone.classList.remove('drag-over'));
-});
+// 파일별 이름·사이즈 텍스트 주입
+dropzone.on('addedfile', file => {
+  const el = file.previewElement;
+  const nameEl = el.querySelector('.file-name') as HTMLElement | null;
 
-dropZone.addEventListener('drop', e => {
-  e.preventDefault();
-  dropZone.classList.remove('drag-over');
-  addFiles(Array.from(e.dataTransfer!.files));
-});
-
-dropZone.addEventListener('click', e => {
-  if (e.target === fileBtn || fileBtn.contains(e.target as Node)) return;
-  fileInput.click();
-});
-
-fileBtn.addEventListener('click', e => {
-  e.stopPropagation();
-  fileInput.click();
-});
-
-fileInput.addEventListener('change', () => addFiles(Array.from(fileInput.files ?? [])));
-
-function addFiles(files: File[]): void {
-  console.log(files);
-  const archives = files.filter(file => isArchive(file.name));
-  const skipped = files.length - archives.length;
-
-  if (archives.length === 0) {
-    showToast('압축 파일을 선택해 주세요!', 'error');
-    return;
+  if (nameEl) {
+    nameEl.textContent = file.name;
+    nameEl.title = file.name;
   }
 
-  if (skipped > 0) {
-    showToast(`압축 파일이 아닌 ${skipped}개 파일은 건너뜁니다.`);
+  const sizeEl = el.querySelector('.file-size');
+  if (sizeEl) sizeEl.textContent = formatSize(file.size);
+});
+
+// 드롭/선택 완료 후 일괄 유효성 검사
+dropzone.on('addedfiles', newFiles => {
+  batchProcessing = true;
+
+  const newFilesSet = new Set(newFiles);
+  const existingNames = new Set(
+    dropzone
+      .getAcceptedFiles()
+      .filter(f => !newFilesSet.has(f))
+      .map(f => f.name),
+  );
+  const batchNames = new Set<string>();
+  let nonArchiveCount = 0;
+  let addedCount = 0;
+
+  for (const file of newFiles) {
+    if (!isArchive(file.name)) {
+      dropzone.removeFile(file);
+      nonArchiveCount++;
+    } else if (existingNames.has(file.name) || batchNames.has(file.name)) {
+      dropzone.removeFile(file);
+    } else {
+      batchNames.add(file.name);
+      addedCount++;
+    }
   }
 
-  const existing = new Set(uploadedFiles.map(file => file.name));
-  archives.filter(file => !existing.has(file.name)).forEach(file => uploadedFiles.push(file));
+  batchProcessing = false;
 
-  renderFileList();
-  fileInput.value = '';
-}
+  if (addedCount === 0 && nonArchiveCount > 0) showToast('압축 파일을 선택해 주세요!', 'error');
+  else if (nonArchiveCount > 0) showToast(`압축 파일이 아닌 ${nonArchiveCount}개 파일은 건너뜁니다.`);
 
-function renderFileList(): void {
-  if (uploadedFiles.length === 0) {
+  updateUI();
+});
+
+// 개별 파일 제거 시 UI 업데이트 (remove 버튼 클릭)
+dropzone.on('removedfile', () => {
+  if (!batchProcessing) updateUI();
+});
+
+function updateUI(): void {
+  const count = dropzone.getAcceptedFiles().length;
+  if (count === 0) {
     fileList.classList.add('hidden');
     fileCount.textContent = '';
     extractBtn.disabled = true;
     clearAllBtn.classList.add('hidden');
-    return;
+  } else {
+    fileList.classList.remove('hidden');
+    fileCount.textContent = `${count}개 파일 선택됨`;
+    extractBtn.disabled = false;
+    clearAllBtn.classList.remove('hidden');
   }
-
-  fileList.classList.remove('hidden');
-  fileCount.textContent = `${uploadedFiles.length}개 파일 선택됨`;
-  extractBtn.disabled = false;
-  clearAllBtn.classList.remove('hidden');
-
-  fileList.innerHTML = uploadedFiles
-    .map(
-      (file, index) => `
-      <div class="file-item">
-        <span class="file-icon">${ARCHIVE_ICON}</span>
-        <span class="file-name" title="${file.name}">${file.name}</span>
-        <span class="file-size">${formatSize(file.size)}</span>
-        <button class="remove-btn" data-i="${index}" aria-label="제거">✕</button>
-      </div>`,
-    )
-    .join('');
-
-  fileList.querySelectorAll('.remove-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      uploadedFiles.splice(Number((btn as HTMLElement).dataset.i), 1);
-      renderFileList();
-    });
-  });
 }
 
 // 압축 해제 진행
 extractBtn.addEventListener('click', runExtraction);
 
 async function runExtraction(): Promise<void> {
+  const files = dropzone.getAcceptedFiles();
+
   extractBtn.disabled = true;
   dropZone.classList.add('hidden');
   actionRow.classList.add('hidden');
@@ -132,7 +133,6 @@ async function runExtraction(): Promise<void> {
   const log: LogFn = (msg, type = 'default') => {
     const div = document.createElement('div');
     if (type !== 'default') div.className = `log-${type}`;
-
     div.textContent = msg;
     progressLogArea.appendChild(div);
     progressLogArea.scrollTop = progressLogArea.scrollHeight;
@@ -141,10 +141,10 @@ async function runExtraction(): Promise<void> {
   try {
     log('추출 시작...');
 
-    for (let i = 0; i < uploadedFiles.length; i++) {
-      const file = uploadedFiles[i];
-      setProgress(i, uploadedFiles.length, file.name);
-      log(`\n[${i + 1}/${uploadedFiles.length}] ${file.name}`);
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      setProgress(i, files.length, file.name);
+      log(`\n[${i + 1}/${files.length}] ${file.name}`);
 
       try {
         await extractRecursive(file, 0, log);
@@ -155,7 +155,7 @@ async function runExtraction(): Promise<void> {
       }
     }
 
-    setProgress(uploadedFiles.length, uploadedFiles.length, '완료');
+    setProgress(files.length, files.length, '완료');
     log(`\n총 ${collectedFiles.size}개 파일 추출됨`, 'success');
 
     await buildResult(log);
@@ -163,7 +163,6 @@ async function runExtraction(): Promise<void> {
     console.error(error);
     log(`Error: ${(error as Error).message}`, 'error');
     showToast('파일 추출 도중 오류가 발생했습니다.', 'error');
-    return;
   }
 }
 
@@ -197,7 +196,6 @@ async function buildResult(log: LogFn): Promise<void> {
       .map(file => {
         const extension = file.name.trim().toLowerCase().split('.').pop();
         const fileIcon = (extension && FILE_ICONS[extension]) ?? FILE_ICON_DEFAULT;
-
         return `
         <div class="result-file">
           <span class="file-icon">${fileIcon}</span>
@@ -216,14 +214,14 @@ async function buildResult(log: LogFn): Promise<void> {
     console.error(error);
     log(`Error: ${(error as Error).message}`, 'error');
     showToast('ZIP 파일 생성 도중 오류가 발생했습니다.', 'error');
-    return;
   }
 }
 
 resetBtn.addEventListener('click', () => {
-  uploadedFiles = [];
+  batchProcessing = true;
+  dropzone.removeAllFiles(true);
+  batchProcessing = false;
   collectedFiles.clear();
-  renderFileList();
 
   dropZone.classList.remove('hidden');
   actionRow.classList.remove('hidden');
@@ -231,10 +229,13 @@ resetBtn.addEventListener('click', () => {
   progressSec.classList.add('hidden');
   resultSec.classList.add('hidden');
   progressLogArea.innerHTML = '';
+
+  updateUI();
 });
 
 clearAllBtn.addEventListener('click', () => {
-  uploadedFiles = [];
-  renderFileList();
-  fileInput.value = '';
+  batchProcessing = true;
+  dropzone.removeAllFiles(true);
+  batchProcessing = false;
+  updateUI();
 });

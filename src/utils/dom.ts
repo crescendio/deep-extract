@@ -4,8 +4,7 @@ function getElement<T extends HTMLElement>(id: string): T {
   return element as T;
 }
 
-export const dropZone = getElement<HTMLDivElement>('drop-zone');
-export const fileInput = getElement<HTMLInputElement>('file-input');
+export const dropZone = getElement<HTMLFormElement>('drop-zone');
 export const fileBtn = getElement<HTMLButtonElement>('file-btn');
 export const fileList = getElement<HTMLUListElement>('file-list');
 export const fileCount = getElement<HTMLSpanElement>('file-count');

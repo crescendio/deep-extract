@@ -37,7 +37,7 @@
       <main class="main">
         <!-- Drop Zone -->
         <section class="card upload-section">
-          <div id="drop-zone" class="drop-zone">
+          <form id="drop-zone" class="drop-zone" action="/">
             <div class="drop-inner">
               <div class="drop-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 640 640">
@@ -50,17 +50,9 @@
 
               <p class="drop-title">압축 파일을 여기에 드래그</p>
               <p class="drop-sub">또는</p>
-              <button id="file-btn" class="btn btn-outline">파일 업로드</button>
+              <button id="file-btn" type="button" class="btn btn-outline">파일 업로드</button>
             </div>
-
-            <input
-              type="file"
-              id="file-input"
-              multiple
-              accept=".zip,.7z,.rar,.tar,.gz,.tgz,.tar.gz,.tar.bz2,.tar.xz,.xz,.bz2,.tbz2,.tbz"
-              style="display: none"
-            />
-          </div>
+          </form>
 
           <!-- File List -->
           <ul id="file-list" class="file-list hidden"></ul>
