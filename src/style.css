@@ -334,13 +334,13 @@ body {
   line-height: 1.8;
 }
 
-.progress-log-area .log-ok {
+.progress-log-area .log-success {
   color: var(--success);
 }
 .progress-log-area .log-error {
   color: var(--error);
 }
-.progress-log-area .log-warn {
+.progress-log-area .log-warning {
   color: var(--warning);
 }
 .progress-log-area .log-inner {

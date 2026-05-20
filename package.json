@@ -1,11 +1,12 @@
 {
   "name": "deep-extract",
+  "private": true,
   "version": "1.0.0",
   "type": "module",
   "scripts": {
     "setup": "node scripts/copy-worker.js",
     "dev": "npm run setup && vite",
-    "build": "npm run setup && vite build",
+    "build": "npm run setup && tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -13,6 +14,7 @@
     "libarchive.js": "^1.3.0"
   },
   "devDependencies": {
-    "vite": "^5.4.0"
+    "typescript": "^6.0.3",
+    "vite": "^8.0.13"
   }
 }
