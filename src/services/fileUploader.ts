@@ -54,13 +54,10 @@ export default class FileUploader {
       this.batchProcessing = true;
 
       const acceptedFiles = newFiles.filter(file => file.accepted);
-
       if (acceptedFiles.length === 0) {
         this.batchProcessing = false;
         return;
       }
-
-      this.uiManager.showToast(`${acceptedFiles.length}개 파일이 추가되었습니다.`);
 
       const newFilesSet = new Set(acceptedFiles);
       const existingNames = new Set(
@@ -90,12 +87,12 @@ export default class FileUploader {
       this.updateUI();
     });
 
-    this.dropzone.on('error', (file, message) => {
-      this.uiManager.showToast(`오류가 발생했습니다: ${file.name}: ${message}`, 'error');
-    });
-
     this.dropzone.on('removedfile', () => {
       if (!this.batchProcessing) this.updateUI();
+    });
+
+    this.dropzone.on('error', (file, message) => {
+      this.uiManager.showToast(`오류가 발생했습니다: ${file.name}: ${message}`, 'error');
     });
 
     // 압축 해제 버튼, 전체 삭제 버튼, 처음으로 돌아가기 버튼

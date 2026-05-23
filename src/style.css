@@ -175,7 +175,7 @@ li {
 }
 
 .file-item {
-  background: var(--surface2);
+  background-color: var(--surface2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 0.625rem 0.875rem;
@@ -184,6 +184,11 @@ li {
 
 .file-item:hover {
   border-color: var(--border-light);
+}
+
+.file-item.dz-error {
+  background-color: rgb(from var(--error) r g b / 0.08);
+  border-color: var(--error);
 }
 
 .file-meta {
