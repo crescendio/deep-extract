@@ -1,4 +1,4 @@
-import { mkdirSync, copyFileSync, existsSync, readdirSync } from 'fs';
+import { mkdirSync, copyFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -15,18 +15,14 @@ if (!existsSync(distDir)) {
 
 const pub = resolve(root, 'public');
 mkdirSync(pub, { recursive: true });
-mkdirSync(resolve(pub, 'wasm-gen'), { recursive: true });
 
-// 1. worker-bundle.js 파일 복사
-// 압축 해제 작업을 메인 스레드 밖에서 실행하는 워커 스크립트
+// 1. worker-bundle.js 복사
+// 압축 해제 작업을 메인 스레드 밖에서 실행하는 워커 스크립트 (ES module 형식)
 copyFileSync(resolve(distDir, 'worker-bundle.js'), resolve(pub, 'worker-bundle.js'));
 
-// 2. wasm-gen 폴더 내 모든 파일 복사
-// - libarchive.js: 실제 압축 해제 처리를 담당하는 WebAssembly 바이너리
-// - libarchive.wasm: WASM 바이너리를 로딩 및 초기화하는 glue 코드
-const wasmSrc = resolve(distDir, 'wasm-gen');
-for (const file of readdirSync(wasmSrc)) {
-  copyFileSync(resolve(wasmSrc, file), resolve(pub, 'wasm-gen', file));
-}
+// 2. libarchive.wasm 복사 (libarchive.js 2.x: dist 루트에 위치)
+// worker-bundle.js가 import.meta.url 기준으로 libarchive.wasm을 로드하므로
+// worker와 같은 위치(public/)에 있어야 함
+copyFileSync(resolve(distDir, 'libarchive.wasm'), resolve(pub, 'libarchive.wasm'));
 
-console.log('[setup] libarchive 워커 파일과 WASM 파일들이 public 폴더에 성공적으로 복사되었습니다.');
+console.log('[setup] libarchive 워커 파일과 WASM 파일이 public 폴더에 성공적으로 복사되었습니다.');

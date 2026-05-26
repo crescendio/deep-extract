@@ -1,13 +1,17 @@
-// libarchive.js가 extractFiles()로 반환하는 중첩 디렉터리 구조
-export type NestedArchiveEntries = {
+/** libarchive.js extractFiles()가 반환하는 중첩 디렉터리 구조 */
+export interface NestedArchiveEntries {
   [key: string]: File | NestedArchiveEntries;
-};
+}
 
-// flattenEntries가 반환하는 평탄화된 파일 항목
-export type FlatEntry = {
+/** 중첩 구조를 평탄화한 단일 파일 항목 */
+export interface FlatEntry {
   name: string;
   file: File;
-};
+}
 
-export type LogType = 'default' | 'success' | 'warning' | 'error' | 'inner';
-export type LogFn = (msg: string, type?: LogType) => void;
+/** 추출 완료 후 결과 목록에 표시되는 파일 항목 */
+export interface ExtractedFile {
+  name: string;
+  size: number;
+  file: File;
+}
